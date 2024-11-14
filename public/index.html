@@ -78,7 +78,7 @@
 
         // Connect to WebSocket
         const poolId = window.location.hash.slice(1) || 'default';
-        const ws = new WebSocket(`ws://${window.location.host}/${poolId}`);
+        const ws = new WebSocket(`wss://${window.location.host}/${poolId}`);
 
         // Load existing drawings
         fetch(`/EventDump/${poolId}`)
@@ -274,7 +274,7 @@
             const clientId = generateClientId(); // Generate unique ID for this client
 
             // Initialize WebSocket connection
-            websocket = new WebSocket(`wss://yourserver.com/audio/${clientId}`);
+            websocket = new WebSocket(`wss://${window.location.host}/audio/${clientId}`);
 
             // Handle WebSocket connection errors
             websocket.onerror = () => alert("Connection Error!");
