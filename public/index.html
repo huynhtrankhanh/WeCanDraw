@@ -260,21 +260,12 @@
     </script>
 
     <script>
-        // Function to generate a random 32-byte identifier
-        function generateClientId() {
-            const array = new Uint8Array(32);
-            window.crypto.getRandomValues(array);
-            return Array.from(array, byte => ('0' + byte.toString(16)).slice(-2)).join('');
-        }
-
         const startChatBtn = document.getElementById('startChat');
         let websocket, audioContext, processor;
 
         startChatBtn.addEventListener('click', async () => {
-            const clientId = generateClientId(); // Generate unique ID for this client
-
             // Initialize WebSocket connection
-            websocket = new WebSocket(`wss://${window.location.host}/audio/${clientId}`);
+            websocket = new WebSocket(`wss://${window.location.host}/audio/${poolId}`);
 
             // Handle WebSocket connection errors
             websocket.onerror = () => alert("Connection Error!");
@@ -298,16 +289,16 @@
 
             // Handle incoming audio data from WebSocket
             const audioQueue = [];
-            websocket.onmessage = (event) => {
-                const data = new Float32Array(event.data);
+            websocket.onmessage = async (event) => {
+                const data = new Float32Array(await event.data.arrayBuffer());
                 audioQueue.push(...data);
                 playAudio();
             };
 
             // Play audio chunks from the queue
             const playAudio = () => {
-                while (audioQueue.length >= 8192) {
-                    const audioData = new Float32Array(audioQueue.splice(0, 8192));
+                while (audioQueue.length >= 1024) {
+                    const audioData = new Float32Array(audioQueue.splice(0, 1024));
                     const audioBuffer = audioContext.createBuffer(1, audioData.length, audioContext.sampleRate);
                     audioBuffer.copyToChannel(audioData, 0);
                     const source = audioContext.createBufferSource();
