@@ -95,6 +95,14 @@
             });
         };
 
+        ws.onerror = () => {
+            alert("Connection error!");
+        }
+
+        ws.onclose = () => {
+            alert("Connection error!");
+        }
+
         function processDrawEvent(payload) {
             const decoder = new TextDecoder();
             const event = JSON.parse(decoder.decode(payload));
