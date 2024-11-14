@@ -7,6 +7,15 @@ const http = require('http');
 
 // Initialize Express app
 const app = express();
+
+// Add this to your existing server code
+app.use(express.static('public')); // Serve static files from 'public' directory
+
+// Serve the drawing app at the root path
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
