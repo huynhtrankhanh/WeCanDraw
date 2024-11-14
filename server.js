@@ -54,12 +54,41 @@ function createBinaryMessage(id, payload) {
 // Store WebSocket clients for each pool
 /** @type {Map<string, Set<WebSocket>>} */
 const poolClients = new Map();
+/** @type {Map<string, Set<WebSocket>>} */
+const audioClients = new Map();
 
 // Handle WebSocket connections
 wss.on('connection', (ws, req) => {
     if (req.url === undefined) return;
     const poolId = req.url.split('/').pop();
     const hashedPoolId = hashPoolId(poolId);
+
+    if (/^\/audio\//.test(req.url)) {
+        {
+            const clientSet = audioClients.get(hashedPoolId);
+            if (clientSet === undefined) {
+                audioClients.set(hashedPoolId, new Set([ws]));
+            } else clientSet.add(ws);
+        }
+
+        ws.on('message', (payload) => {
+            const clientSet = audioClients.get(hashedPoolId)
+            if (clientSet !== undefined) {
+                clientSet.forEach(client => {
+                    if (client === ws || client.readyState !== WebSocket.OPEN) return
+                    client.send(payload)
+                })
+            }
+        })
+
+        ws.on('close', () => {
+            const clientSet = audioClients.get(hashedPoolId)
+            if (clientSet !== undefined) {
+                clientSet.delete(ws)
+            }
+        })
+        return
+    }
 
     // Add client to pool
     {
