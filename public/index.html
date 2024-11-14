@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Collaborative Drawing Board</title>
     <style>
-        body { margin: 0; overflow: hidden; }
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
         #toolbar {
             position: fixed;
             top: 0;
@@ -13,12 +18,13 @@
             right: 0;
             background: #fff;
             padding: 10px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             z-index: 1000;
             display: flex;
             gap: 10px;
             align-items: center;
         }
+
         #container {
             position: relative;
             width: 100vw;
@@ -26,24 +32,29 @@
             margin-top: 50px;
             overflow: hidden;
         }
+
         #container.move-mode {
             overflow: auto;
         }
+
         #canvas {
             position: absolute;
             background: #fff;
             cursor: crosshair;
         }
+
         .active-tool {
             background: #e0e0e0 !important;
         }
     </style>
 </head>
+
 <body>
     <div id="toolbar">
         <input type="color" id="colorPicker" value="#000000">
         <button id="brushTool" class="active-tool">✏️ Draw</button>
         <button id="moveTool">✋ Move</button>
+        <button id="startChat">🎤 Enable Audio</button>
         <span id="coordinates"></span>
     </div>
     <div id="container">
@@ -106,13 +117,13 @@
         function processDrawEvent(payload) {
             const decoder = new TextDecoder();
             const event = JSON.parse(decoder.decode(payload));
-            
+
             ctx.beginPath();
             ctx.strokeStyle = event.color;
             ctx.lineWidth = 2;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            
+
             for (let i = 0; i < event.points.length; i++) {
                 const point = event.points[i];
                 if (i === 0) {
@@ -146,9 +157,9 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
-            
+
             let clientX, clientY;
-            
+
             // Handle both mouse and touch events
             if (e.touches) {
                 clientX = e.touches[0].clientX;
@@ -161,7 +172,7 @@
             // Calculate point relative to canvas position and scale
             const x = (clientX - rect.left) * scaleX;
             const y = (clientY - rect.top) * scaleY;
-            
+
             // Ensure coordinates are within canvas bounds
             return {
                 x: Math.max(0, Math.min(canvas.width, x)),
@@ -172,11 +183,11 @@
         function startDrawing(e) {
             if (!drawMode) return;
             if (e.touches && e.touches.length > 1) return; // Ignore multitouch
-            
+
             isDrawing = true;
             const point = getCanvasPoint(e);
             currentPath = [point];
-            
+
             ctx.beginPath();
             ctx.strokeStyle = colorPicker.value;
             ctx.lineWidth = 2;
@@ -188,17 +199,17 @@
         function draw(e) {
             if (!isDrawing || !drawMode) return;
             if (e.touches && e.touches.length > 1) return; // Ignore multitouch
-            
+
             const point = getCanvasPoint(e);
             currentPath.push(point);
-            
+
             // Draw on local canvas
             ctx.lineTo(point.x, point.y);
             ctx.stroke();
-            
+
             // Update coordinates display
             coordinates.textContent = `X: ${Math.round(point.x)}, Y: ${Math.round(point.y)}`;
-            
+
             // Only prevent default in draw mode to allow scrolling in move mode
             if (drawMode && isDrawing && e.touches) {
                 e.preventDefault();
@@ -208,19 +219,19 @@
         function stopDrawing(e) {
             if (!isDrawing) return;
             isDrawing = false;
-            
+
             if (currentPath.length > 1) {
                 // Send the complete path to the server
                 const event = {
                     color: colorPicker.value,
                     points: currentPath
                 };
-                
+
                 const encoder = new TextEncoder();
                 const payload = encoder.encode(JSON.stringify(event));
                 ws.send(payload);
             }
-            
+
             currentPath = [];
         }
 
@@ -247,5 +258,68 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
     </script>
+
+    <script>
+        // Function to generate a random 32-byte identifier
+        function generateClientId() {
+            const array = new Uint8Array(32);
+            window.crypto.getRandomValues(array);
+            return Array.from(array, byte => ('0' + byte.toString(16)).slice(-2)).join('');
+        }
+
+        const startChatBtn = document.getElementById('startChat');
+        let websocket, audioContext, processor;
+
+        startChatBtn.addEventListener('click', async () => {
+            const clientId = generateClientId(); // Generate unique ID for this client
+
+            // Initialize WebSocket connection
+            websocket = new WebSocket(`wss://yourserver.com/audio/${clientId}`);
+
+            // Handle WebSocket connection errors
+            websocket.onerror = () => alert("Connection Error!");
+            websocket.onclose = () => alert("Connection Error!");
+
+            // Capture audio from the microphone
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioContext = new AudioContext();
+            const mediaStreamSource = audioContext.createMediaStreamSource(stream);
+            processor = audioContext.createScriptProcessor(1024, 1, 1);
+
+            mediaStreamSource.connect(processor);
+            processor.connect(audioContext.destination);
+
+            // Send audio data over WebSocket when available
+            processor.onaudioprocess = (e) => {
+                const inputData = e.inputBuffer.getChannelData(0);
+                const float32Array = new Float32Array(inputData);
+                websocket.send(float32Array);
+            };
+
+            // Handle incoming audio data from WebSocket
+            const audioQueue = [];
+            websocket.onmessage = (event) => {
+                const data = new Float32Array(event.data);
+                audioQueue.push(...data);
+                playAudio();
+            };
+
+            // Play audio chunks from the queue
+            const playAudio = () => {
+                while (audioQueue.length >= 8192) {
+                    const audioData = new Float32Array(audioQueue.splice(0, 8192));
+                    const audioBuffer = audioContext.createBuffer(1, audioData.length, audioContext.sampleRate);
+                    audioBuffer.copyToChannel(audioData, 0);
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(audioContext.destination);
+                    source.start(0);
+                }
+            };
+
+            startChatBtn.setAttribute("disabled", "disabled");
+        });
+    </script>
 </body>
+
 </html>
