@@ -37,10 +37,19 @@
             overflow: auto;
         }
 
-        #canvas {
+        #canvas, #previewCanvas {
             position: absolute;
-            background: #fff;
+            background: transparent;
             cursor: crosshair;
+        }
+
+        #canvas {
+            background: white;
+            z-index: 1;
+        }
+
+        #previewCanvas {
+            z-index: 2;
         }
 
         .active-tool {
@@ -53,32 +62,340 @@
     <div id="toolbar">
         <input type="color" id="colorPicker" value="#000000">
         <button id="brushTool" class="active-tool">✏️ Draw</button>
+        <button id="rectangleTool">⬜ Rectangle</button>
+        <button id="ovalTool">⭕ Oval</button>
+        <button id="lineTool">📏 Line</button>
+        <button id="textTool">📝 Text</button>
         <button id="moveTool">✋ Move</button>
         <button id="startChat">🎤 Enable Audio</button>
         <span id="coordinates"></span>
     </div>
     <div id="container">
         <canvas id="canvas" width="2000" height="2000"></canvas>
+        <canvas id="previewCanvas" width="2000" height="2000"></canvas>
     </div>
 
     <script>
-        // Initialize canvas and context
+        // Initialize canvases and contexts
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
         const container = document.getElementById('container');
         const colorPicker = document.getElementById('colorPicker');
         const brushTool = document.getElementById('brushTool');
+        const rectangleTool = document.getElementById('rectangleTool');
+        const ovalTool = document.getElementById('ovalTool');
+        const lineTool = document.getElementById('lineTool');
+        const textTool = document.getElementById('textTool');
         const moveTool = document.getElementById('moveTool');
         const coordinates = document.getElementById('coordinates');
 
         // Drawing state
         let isDrawing = false;
         let currentPath = [];
+        let currentTool = 'brush';
+        let startPoint = null;
         let drawMode = true;
 
         // Connect to WebSocket
         const poolId = window.location.hash.slice(1) || 'default';
-        const ws = new WebSocket(`wss://${window.location.host}/${poolId}`);
+        const ws = new WebSocket(`ws://${window.location.host}/${poolId}`);
+
+        // Tool selection
+        function setActiveTool(tool) {
+            const tools = [brushTool, rectangleTool, ovalTool, lineTool, textTool, moveTool];
+            tools.forEach(t => t.classList.remove('active-tool'));
+            currentTool = tool;
+            drawMode = tool !== 'move';
+            canvas.style.cursor = tool === 'text' ? 'text' : tool === 'move' ? 'grab' : 'crosshair';
+            previewCanvas.style.cursor = canvas.style.cursor;
+            container.classList.toggle('move-mode', tool === 'move');
+        }
+
+        brushTool.onclick = () => {
+            setActiveTool('brush');
+            brushTool.classList.add('active-tool');
+        };
+
+        rectangleTool.onclick = () => {
+            setActiveTool('rectangle');
+            rectangleTool.classList.add('active-tool');
+        };
+
+        ovalTool.onclick = () => {
+            setActiveTool('oval');
+            ovalTool.classList.add('active-tool');
+        };
+
+        lineTool.onclick = () => {
+            setActiveTool('line');
+            lineTool.classList.add('active-tool');
+        };
+
+        textTool.onclick = () => {
+            setActiveTool('text');
+            textTool.classList.add('active-tool');
+        };
+
+        moveTool.onclick = () => {
+            setActiveTool('move');
+            moveTool.classList.add('active-tool');
+        };
+
+        // Handle text input
+        previewCanvas.addEventListener('click', (e) => {
+            if (currentTool === 'text') {
+                const point = getCanvasPoint(e);
+                const text = prompt('Enter text:');
+                if (text) {
+                    const event = {
+                        type: 'text',
+                        color: colorPicker.value,
+                        x: point.x,
+                        y: point.y,
+                        text: text
+                    };
+                    sendDrawEvent(event);
+                    processDrawEvent((() => {
+                        const encoder = new TextEncoder();
+                        return encoder.encode(JSON.stringify(event));
+                    }))
+                }
+            }
+        });
+
+        function sendDrawEvent(event) {
+            const encoder = new TextEncoder();
+            const payload = encoder.encode(JSON.stringify(event));
+            ws.send(payload);
+        }
+
+        function processDrawEvent(payload) {
+            const decoder = new TextDecoder();
+            const event = JSON.parse(decoder.decode(payload));
+
+            ctx.strokeStyle = event.color;
+            ctx.fillStyle = event.color;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            switch (event.type) {
+                case 'brush':
+                    ctx.beginPath();
+                    for (let i = 0; i < event.points.length; i++) {
+                        const point = event.points[i];
+                        if (i === 0) {
+                            ctx.moveTo(point.x, point.y);
+                        } else {
+                            ctx.lineTo(point.x, point.y);
+                        }
+                    }
+                    ctx.stroke();
+                    break;
+
+                case 'rectangle':
+                    ctx.strokeRect(
+                        event.x,
+                        event.y,
+                        event.width,
+                        event.height
+                    );
+                    break;
+
+                case 'oval':
+                    ctx.beginPath();
+                    ctx.ellipse(
+                        event.x + event.width / 2,
+                        event.y + event.height / 2,
+                        Math.abs(event.width / 2),
+                        Math.abs(event.height / 2),
+                        0,
+                        0,
+                        2 * Math.PI
+                    );
+                    ctx.stroke();
+                    break;
+
+                case 'line':
+                    ctx.beginPath();
+                    ctx.moveTo(event.startX, event.startY);
+                    ctx.lineTo(event.endX, event.endY);
+                    ctx.stroke();
+                    break;
+
+                case 'text':
+                    ctx.font = '16px Arial';
+                    ctx.fillText(event.text, event.x, event.y);
+                    break;
+            }
+        }
+
+        function drawPreview(event) {
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            previewCtx.strokeStyle = event.color;
+            previewCtx.lineWidth = 2;
+            previewCtx.lineCap = 'round';
+            previewCtx.lineJoin = 'round';
+
+            switch (event.type) {
+                case 'rectangle':
+                    previewCtx.strokeRect(
+                        event.x,
+                        event.y,
+                        event.width,
+                        event.height
+                    );
+                    break;
+
+                case 'oval':
+                    previewCtx.beginPath();
+                    previewCtx.ellipse(
+                        event.x + event.width / 2,
+                        event.y + event.height / 2,
+                        Math.abs(event.width / 2),
+                        Math.abs(event.height / 2),
+                        0,
+                        0,
+                        2 * Math.PI
+                    );
+                    previewCtx.stroke();
+                    break;
+
+                case 'line':
+                    previewCtx.beginPath();
+                    previewCtx.moveTo(event.startX, event.startY);
+                    previewCtx.lineTo(event.endX, event.endY);
+                    previewCtx.stroke();
+                    break;
+            }
+        }
+
+        function getCanvasPoint(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            let clientX, clientY;
+
+            if (e.touches) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+
+            const x = (clientX - rect.left) * scaleX;
+            const y = (clientY - rect.top) * scaleY;
+
+            return {
+                x: Math.max(0, Math.min(canvas.width, x)),
+                y: Math.max(0, Math.min(canvas.height, y))
+            };
+        }
+
+        function startDrawing(e) {
+            if (!drawMode || currentTool === 'text') return;
+            if (e.touches && e.touches.length > 1) return;
+
+            isDrawing = true;
+            const point = getCanvasPoint(e);
+            startPoint = point;
+
+            if (currentTool === 'brush') {
+                currentPath = [point];
+                ctx.beginPath();
+                ctx.strokeStyle = colorPicker.value;
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.moveTo(point.x, point.y);
+            }
+        }
+
+        function draw(e) {
+            if (!isDrawing || !drawMode || currentTool === 'text') return;
+            if (e.touches && e.touches.length > 1) return;
+
+            const point = getCanvasPoint(e);
+            coordinates.textContent = `X: ${Math.round(point.x)}, Y: ${Math.round(point.y)}`;
+
+            if (currentTool === 'brush') {
+                currentPath.push(point);
+                ctx.lineTo(point.x, point.y);
+                ctx.stroke();
+            } else {
+                // Preview for shapes
+                const previewEvent = {
+                    type: currentTool,
+                    color: colorPicker.value,
+                    x: startPoint.x,
+                    y: startPoint.y,
+                    width: point.x - startPoint.x,
+                    height: point.y - startPoint.y,
+                    startX: startPoint.x,
+                    startY: startPoint.y,
+                    endX: point.x,
+                    endY: point.y
+                };
+                drawPreview(previewEvent);
+            }
+
+            if (drawMode && isDrawing && e.touches) {
+                e.preventDefault();
+            }
+        }
+
+        function stopDrawing(e) {
+            if (!isDrawing) return;
+            isDrawing = false;
+
+            const point = getCanvasPoint(e);
+
+            if (currentTool === 'brush' && currentPath.length > 1) {
+                sendDrawEvent({
+                    type: 'brush',
+                    color: colorPicker.value,
+                    points: currentPath
+                });
+            } else if (startPoint && ['rectangle', 'oval', 'line'].includes(currentTool)) {
+                const event = {
+                    type: currentTool,
+                    color: colorPicker.value,
+                    x: startPoint.x,
+                    y: startPoint.y,
+                    width: point.x - startPoint.x,
+                    height: point.y - startPoint.y,
+                    startX: startPoint.x,
+                    startY: startPoint.y,
+                    endX: point.x,
+                    endY: point.y
+                };
+                sendDrawEvent(event);
+                processDrawEvent((() => {
+                    const textEncoder = new TextEncoder();
+                    return textEncoder.encode(JSON.stringify(event))
+                })());
+            }
+
+            // Clear preview canvas after drawing is complete
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            currentPath = [];
+            startPoint = null;
+        }
+
+        // Event listeners
+        previewCanvas.addEventListener('mousedown', startDrawing);
+        previewCanvas.addEventListener('mousemove', draw);
+        previewCanvas.addEventListener('mouseup', stopDrawing);
+        previewCanvas.addEventListener('mouseleave', stopDrawing);
+
+        previewCanvas.addEventListener('touchstart', startDrawing, { passive: true });
+        previewCanvas.addEventListener('touchmove', draw, { passive: false });
+        previewCanvas.addEventListener('touchend', stopDrawing, { passive: true });
+        previewCanvas.addEventListener('touchcancel', stopDrawing, { passive: true });
 
         // Load existing drawings
         fetch(`/EventDump/${poolId}`)
@@ -95,7 +412,7 @@
                 }
             });
 
-        // WebSocket event handling
+        // WebSocket handlers
         ws.onmessage = (event) => {
             event.data.arrayBuffer().then(buffer => {
                 const view = new DataView(buffer);
@@ -114,145 +431,11 @@
             alert("Connection error!");
         }
 
-        function processDrawEvent(payload) {
-            const decoder = new TextDecoder();
-            const event = JSON.parse(decoder.decode(payload));
-
-            ctx.beginPath();
-            ctx.strokeStyle = event.color;
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-
-            for (let i = 0; i < event.points.length; i++) {
-                const point = event.points[i];
-                if (i === 0) {
-                    ctx.moveTo(point.x, point.y);
-                } else {
-                    ctx.lineTo(point.x, point.y);
-                }
-            }
-            ctx.stroke();
-        }
-
-        // Tool selection
-        brushTool.onclick = () => {
-            drawMode = true;
-            brushTool.classList.add('active-tool');
-            moveTool.classList.remove('active-tool');
-            canvas.style.cursor = 'crosshair';
-            container.classList.remove('move-mode');
-        };
-
-        moveTool.onclick = () => {
-            drawMode = false;
-            moveTool.classList.add('active-tool');
-            brushTool.classList.remove('active-tool');
-            canvas.style.cursor = 'grab';
-            container.classList.add('move-mode');
-        };
-
-        // Drawing functionality
-        function getCanvasPoint(e) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-
-            let clientX, clientY;
-
-            // Handle both mouse and touch events
-            if (e.touches) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-
-            // Calculate point relative to canvas position and scale
-            const x = (clientX - rect.left) * scaleX;
-            const y = (clientY - rect.top) * scaleY;
-
-            // Ensure coordinates are within canvas bounds
-            return {
-                x: Math.max(0, Math.min(canvas.width, x)),
-                y: Math.max(0, Math.min(canvas.height, y))
-            };
-        }
-
-        function startDrawing(e) {
-            if (!drawMode) return;
-            if (e.touches && e.touches.length > 1) return; // Ignore multitouch
-
-            isDrawing = true;
-            const point = getCanvasPoint(e);
-            currentPath = [point];
-
-            ctx.beginPath();
-            ctx.strokeStyle = colorPicker.value;
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.moveTo(point.x, point.y);
-        }
-
-        function draw(e) {
-            if (!isDrawing || !drawMode) return;
-            if (e.touches && e.touches.length > 1) return; // Ignore multitouch
-
-            const point = getCanvasPoint(e);
-            currentPath.push(point);
-
-            // Draw on local canvas
-            ctx.lineTo(point.x, point.y);
-            ctx.stroke();
-
-            // Update coordinates display
-            coordinates.textContent = `X: ${Math.round(point.x)}, Y: ${Math.round(point.y)}`;
-
-            // Only prevent default in draw mode to allow scrolling in move mode
-            if (drawMode && isDrawing && e.touches) {
-                e.preventDefault();
-            }
-        }
-
-        function stopDrawing(e) {
-            if (!isDrawing) return;
-            isDrawing = false;
-
-            if (currentPath.length > 1) {
-                // Send the complete path to the server
-                const event = {
-                    color: colorPicker.value,
-                    points: currentPath
-                };
-
-                const encoder = new TextEncoder();
-                const payload = encoder.encode(JSON.stringify(event));
-                ws.send(payload);
-            }
-
-            currentPath = [];
-        }
-
-        // Mouse event listeners
-        canvas.addEventListener('mousedown', startDrawing);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', stopDrawing);
-        canvas.addEventListener('mouseleave', stopDrawing);
-
-        // Touch event listeners with corrected passive settings
-        canvas.addEventListener('touchstart', startDrawing, { passive: true });
-        canvas.addEventListener('touchmove', draw, { passive: false });
-        canvas.addEventListener('touchend', stopDrawing, { passive: true });
-        canvas.addEventListener('touchcancel', stopDrawing, { passive: true });
-
-        // Handle window resize
         function resizeCanvas() {
-            // Keep the canvas display size matching the container size
-            const rect = container.getBoundingClientRect();
             canvas.style.width = '2000px';
             canvas.style.height = '2000px';
+            previewCanvas.style.width = '2000px';
+            previewCanvas.style.height = '2000px';
         }
 
         window.addEventListener('resize', resizeCanvas);
