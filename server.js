@@ -71,6 +71,10 @@ wss.on('connection', (ws, req) => {
             } else clientSet.add(ws);
         }
 
+        const pingInterval = setInterval(() => {
+            ws.ping()
+        }, 5000)
+
         ws.on('message', (payload) => {
             const clientSet = audioClients.get(hashedPoolId)
             if (clientSet !== undefined) {
@@ -86,6 +90,7 @@ wss.on('connection', (ws, req) => {
             if (clientSet !== undefined) {
                 clientSet.delete(ws)
             }
+            clearInterval(pingInterval)
         })
         return
     }
@@ -98,6 +103,10 @@ wss.on('connection', (ws, req) => {
         } else
             clientSet.add(ws);
     }
+
+    const pingInterval = setInterval(() => {
+        ws.ping()
+    }, 5000)
 
     ws.on('message', (payload) => {
         // Store in database
@@ -132,6 +141,7 @@ wss.on('connection', (ws, req) => {
                 poolClients.delete(hashedPoolId);
             }
         }
+        clearInterval(pingInterval)
     });
 });
 
