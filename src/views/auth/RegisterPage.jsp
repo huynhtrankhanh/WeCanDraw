@@ -1,0 +1,110 @@
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        <!-- ===== CSS ===== -->
+        <link rel="stylesheet" href="/public/css/style.css">
+
+        <!-- ===== BOX ICONS ===== -->
+        <link href='https://cdn.jsdelivr.net/npm/boxicons@2.0.5/css/boxicons.min.css' rel='stylesheet'>
+
+        <title>Register Page</title>  
+ </head>
+<body>
+    <div class="l-form">
+        <div class="form">
+          <form  action="emailList" method="post"  id="registrationForm" class="form__content">
+               <input type="hidden" name="action" value="add"> 
+                <h1 class="form__title">Create account</h1>
+
+
+                <div class="form__div form__div-one">
+                    <div class="form__icon"> <i class='bx bx-user-circle'></i></div>
+                    <div class="form__div-input">
+                       <label for="userName" class="form__label">Username (at least 3 characters):</label>
+                        <input type="text" id="userName" name="userName" class="form__input" placeholder="Username" required>
+                        <span id="usernameError" class="error-message"></span>
+                    </div>
+                </div>
+
+                <div class="form__div form__div-one">
+                    <div class="form__icon"><i class='bx bx-envelope' ></i> </div>
+                    <div class="form__div-input">
+                        <label for="email" class="form__label">Email (valid email format):</label>
+                        <input type="email" id="email" name="email" class="form__input" placeholder="Email" required>
+                         <span id="emailError" class="error-message"></span>
+                    </div>
+                </div>
+
+                <div class="form__div">
+                     <div class="form__icon"> <i class='bx bx-lock' ></i></div>
+                    <div class="form__div-input">
+                        <label for="password" class="form__label">Password (at least 6 characters):</label>
+                        <input type="password" id="password" name="password" class="form__input" placeholder="Password" required>
+                        <span id="passwordError" class="error-message"></span>
+                    </div>
+                </div>
+                <input type="submit" class="form__button" value="Create account">
+
+
+                 <div class="form__login">
+                     <span class="form__login-text">Already have an account?</span>
+                     <a href="LoginPage.jsp" class="form__login-link">Login</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('registrationForm');
+        const usernameInput = document.getElementById('userName');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const usernameError = document.getElementById('usernameError');
+        const emailError = document.getElementById('emailError');
+        const passwordError = document.getElementById('passwordError');
+
+        form.addEventListener('submit', function(event) {
+            let isValid = true;
+
+            // Username validation
+            if (usernameInput.value.length < 3) {
+                usernameError.textContent = "Username must be at least 3 characters.";
+                usernameError.style.display = "block"; // Show error
+                isValid = false;
+            } else {
+                usernameError.style.display = "none"; // Hide error if valid
+            }
+
+           // Email Validation
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value)) {
+                emailError.textContent = "Please enter a valid email address.";
+                emailError.style.display = "block";
+                isValid = false;
+             } else {
+                emailError.style.display = "none";
+            }
+
+
+            // Password Validation
+             if (passwordInput.value.length < 6) {
+                passwordError.textContent = "Password must be at least 6 characters.";
+                passwordError.style.display = "block";
+                isValid = false;
+             } else {
+               passwordError.style.display = "none";
+             }
+
+            if (!isValid) {
+                event.preventDefault();
+            } else {
+                window.location.href = 'LoginPage.jsp'; // Redirect if valid
+            }
+
+        });
+    </script>
+</body>
+</html>
