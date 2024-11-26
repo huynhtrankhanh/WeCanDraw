@@ -1,38 +1,133 @@
-
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-        <!-- ===== CSS ===== -->
-        <link rel="stylesheet" href="/public/css/style.css">
-
-        <!-- ===== BOX ICONS ===== -->
-        <link href='https://cdn.jsdelivr.net/npm/boxicons@2.0.5/css/boxicons.min.css' rel='stylesheet'>
-
-        <title>Register Page</title>  
-   
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Page</title>
     <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif; /* Or your preferred font */
+            overflow: hidden; /* Prevents scrollbars */
+            background-image: url('frame1.png'); /* Background image */
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .l-form { /* Remove the large circles; the background image takes care of the visuals */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100vw;
+            position: relative; /* Needed for absolute positioning of the form */
+        }
+
+
+        .form {
+            background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent white */
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            width: 100%; /* Make form occupy full width available */
+            margin: 0 auto; /* Center the form */
+        }
+
+        .form__title {
+            text-align: center;
+            color: #333; /* Dark gray text */
+            margin-bottom: 20px;
+        }
+
+        .form__div {
+            margin-bottom: 15px;
+        }
+
+        .form__icon {
+            width: 40px;
+            height: 40px;
+            background-color: #e0b0ff; /* Purple */
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-size: 20px;
+            margin-right: 10px;
+        }
+
+
+        .form__label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555; /* Darker gray */
+        }
+
+        .form__input {
+            width: calc(100% - 60px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            color: #333;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .form__button {
+            padding: 10px 20px;
+            background-color: #4CAF50; /* Green */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        .form__login {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .form__login-text {
+            color: #333;
+        }
+
+        .form__login-link {
+            color: #007bff; /* Blue link color */
+            text-decoration: none;
+        }
+
         .error-message {
             color: red;
-            display: none; /* Initially hidden */
-            margin-top: 5px; /* Small spacing */
+            display: none;
+            margin-top: 5px;
+        }
+
+        /* Responsive adjustments */
+        @media screen and (max-width: 450px) {
+            .form {
+                width: 90%;
+            }
         }
     </style>
- </head>
+    <link href='https://cdn.jsdelivr.net/npm/boxicons@2.0.5/css/boxicons.min.css' rel='stylesheet'>
+</head>
 <body>
     <div class="l-form">
+        <div class="shape1"></div>
+        <div class="shape2"></div>
         <div class="form">
-          <form  action="emailList" method="post"  id="registrationForm" class="form__content">
-               <input type="hidden" name="action" value="add"> 
+            <form action="emailList" method="post" id="registrationForm">
                 <h1 class="form__title">Create account</h1>
-
 
                 <div class="form__div form__div-one">
                     <div class="form__icon"> <i class='bx bx-user-circle'></i></div>
                     <div class="form__div-input">
-                       <label for="userName" class="form__label">Username (at least 3 characters):</label>
+                        <label for="userName" class="form__label">Username (at least 3 characters):</label>
                         <input type="text" id="userName" name="userName" class="form__input" placeholder="Username" required>
                         <span id="usernameError" class="error-message"></span>
                     </div>
@@ -43,12 +138,12 @@
                     <div class="form__div-input">
                         <label for="email" class="form__label">Email (valid email format):</label>
                         <input type="email" id="email" name="email" class="form__input" placeholder="Email" required>
-                         <span id="emailError" class="error-message"></span>
+                        <span id="emailError" class="error-message"></span>
                     </div>
                 </div>
 
                 <div class="form__div">
-                     <div class="form__icon"> <i class='bx bx-lock' ></i></div>
+                    <div class="form__icon"> <i class='bx bx-lock' ></i></div>
                     <div class="form__div-input">
                         <label for="password" class="form__label">Password (at least 6 characters):</label>
                         <input type="password" id="password" name="password" class="form__input" placeholder="Password" required>
@@ -58,13 +153,15 @@
                 <input type="submit" class="form__button" value="Create account">
 
 
-                 <div class="form__login">
-                     <span class="form__login-text">Already have an account?</span>
-                     <a href="Login.jsp" class="form__login-link">Login</a>
+                <div class="form__login">
+                    <span class="form__login-text">Already have an account?</span>
+                    <a href="Login.jsp" class="form__login-link">Login</a>
                 </div>
             </form>
         </div>
     </div>
+
+   
 
     <script>
         const form = document.getElementById('registrationForm');
