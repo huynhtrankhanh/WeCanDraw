@@ -37,7 +37,8 @@
             overflow: auto;
         }
 
-        #canvas, #previewCanvas {
+        #canvas,
+        #previewCanvas {
             position: absolute;
             background: transparent;
             cursor: crosshair;
@@ -55,10 +56,24 @@
         .active-tool {
             background: #e0e0e0 !important;
         }
+
+        #mic-control #mute {
+            display: none;
+        }
+
+        #mic-control.enabled #startChat {
+            display: none;
+        }
+
+        #mic-control.enabled #mute {
+            display: inline-block;
+        }
     </style>
+    <script src='https://meet.jit.si/external_api.js'></script>
 </head>
 
 <body>
+    <div id='jitsi' style="display:none"></div>
     <div id="toolbar">
         <input type="color" id="colorPicker" value="#000000">
         <button id="brushTool" class="active-tool">✏️ Draw</button>
@@ -67,7 +82,8 @@
         <button id="lineTool">📏 Line</button>
         <button id="textTool">📝 Text</button>
         <button id="moveTool">✋ Move</button>
-        <button id="startChat">🎤 Enable Audio</button>
+        <span id="mic-control"><button id="startChat">🎤 Enable Microphone</button><button id="mute">🎤 Mute
+                Microphone</button></span>
         <span id="coordinates"></span>
     </div>
     <div id="container">
@@ -443,51 +459,59 @@
     </script>
 
     <script>
+        async function hashText(text) {
+            // Convert the text to an ArrayBuffer
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+
+            // Compute SHA-256 hash
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+
+            // Convert the hash to a Base32 representation
+            const base32Hash = toBase32(new Uint8Array(hashBuffer));
+
+            // Display the result
+            return text
+        }
+
+        function toBase32(byteArray) {
+            const base32Alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+            let bits = '';
+            let base32 = '';
+
+            // Convert byte array to a binary string
+            byteArray.forEach(byte => {
+                bits += byte.toString(2).padStart(8, '0');
+            });
+
+            // Group bits into 5-bit chunks and map to Base32 characters
+            for (let i = 0; i < bits.length; i += 5) {
+                const chunk = bits.substring(i, i + 5);
+                if (chunk.length === 5) {
+                    base32 += base32Alphabet[parseInt(chunk, 2)];
+                } else {
+                    base32 += base32Alphabet[parseInt(chunk.padEnd(5, '0'), 2)];
+                }
+            }
+
+            return base32;
+        }
         const startChatBtn = document.getElementById('startChat');
-        let websocket, audioContext, processor;
-
-        startChatBtn.addEventListener('click', async () => {
-            // Initialize WebSocket connection
-            websocket = new WebSocket(`wss://${window.location.host}/audio/${poolId}`);
-
-            // Handle WebSocket connection errors
-            websocket.onerror = () => alert("Connection error!");
-            websocket.onclose = () => alert("Connection error!");
-
-            // Capture audio from the microphone
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioContext = new AudioContext();
-            const mediaStreamSource = audioContext.createMediaStreamSource(stream);
-            processor = audioContext.createScriptProcessor(1024, 1, 1);
-
-            mediaStreamSource.connect(processor);
-            processor.connect(audioContext.destination);
-
-            // Send audio data over WebSocket when available
-            processor.onaudioprocess = (e) => {
-                const inputData = e.inputBuffer.getChannelData(0);
-                const float32Array = new Float32Array(inputData);
-                websocket.send(float32Array);
-            };
-
-            // Handle incoming audio data from WebSocket
-            websocket.onmessage = async (event) => {
-                const data = new Float32Array(await event.data.arrayBuffer());
-                playAudio(data);
-            };
-
-            // Play audio chunks from the queue
-            const playAudio = (audioData) => {
-                const audioBuffer = audioContext.createBuffer(1, audioData.length, audioContext.sampleRate);
-                audioBuffer.copyToChannel(audioData, 0);
-                const source = audioContext.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(audioContext.destination);
-                source.start(0);
-            };
-
-            startChatBtn.setAttribute("disabled", "disabled");
-        });
+        const api = new JitsiMeetExternalAPI("meet.jit.si", {
+            roomName: hashText("TITUEUYOFYDUGIDTFJDTCIHIRYTOTYEYHJRURHDGWYT FYFIHJFUHOGIHIV  JGIYIGYFIBI JVKGIRYEUGOVU I JVJ" + location.hash),
+            parentNode: document.getElementById('jitsi'),
+            configOverwrite: { startWithAudioMuted: true },
+        })
+        const micControlSpan = document.getElementById("mic-control");
+        startChatBtn.addEventListener("click", () => {
+            micControlSpan.classList.add("enabled")
+            api.executeCommand('toggleAudio')
+        })
+        const muteBtn = document.getElementById("mute")
+        muteBtn.addEventListener("click", () => {
+            micControlSpan.classList.remove("enabled")
+            api.executeCommand('toggleAudio')
+        })
     </script>
 </body>
 
