@@ -500,20 +500,28 @@
         (async () => {
         const roomName = await hashText("TITUEUYOFYDUGIDTFJDTCIHIRYTOTYEYHJRURHDGWYT FYFIHJFUHOGIHIV  JGIYIGYFIBI JVKGIRYEUGOVU I JVJ" + location.hash)
         const startChatBtn = document.getElementById('startChat');
-        const api = new JitsiMeetExternalAPI("meet.jit.si", {
+        const displayName = await hashText(crypto.getRandomValues(new Uint8Array(300)).join(','))
+        const api = new JitsiMeetExternalAPI("calls.disroot.org", {
             roomName,
             parentNode: document.getElementById('jitsi'),
-            configOverwrite: { startWithAudioMuted: true },
+            configOverwrite: { startWithAudioMuted: true, startWithVideoMuted: true, prejoinPageEnabled: false },
+            userInfo: { displayName, email: displayName + "@gmail.com" }
         })
         const micControlSpan = document.getElementById("mic-control");
         startChatBtn.addEventListener("click", () => {
-            micControlSpan.classList.add("enabled")
-            api.executeCommand('toggleAudio')
+            api.isAudioMuted().then(muted => {
+                if (!muted) return;
+                micControlSpan.classList.add("enabled")
+                api.executeCommand('toggleAudio')
+            });
         })
         const muteBtn = document.getElementById("mute")
         muteBtn.addEventListener("click", () => {
-            micControlSpan.classList.remove("enabled")
-            api.executeCommand('toggleAudio')
+            api.isAudioMuted().then(muted => {
+                if (muted) return;
+                micControlSpan.classList.remove("enabled")
+                api.executeCommand('toggleAudio')
+            })
         })
         })();
     </script>
