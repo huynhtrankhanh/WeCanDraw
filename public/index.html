@@ -112,6 +112,7 @@
         let currentPath = [];
         let currentTool = 'brush';
         let startPoint = null;
+        let endPoint = null
         let drawMode = true;
 
         // Connect to WebSocket
@@ -319,6 +320,7 @@
             isDrawing = true;
             const point = getCanvasPoint(e);
             startPoint = point;
+            endPoint = point;
 
             if (currentTool === 'brush') {
                 currentPath = [point];
@@ -336,6 +338,7 @@
             if (e.touches && e.touches.length > 1) return;
 
             const point = getCanvasPoint(e);
+            endPoint = point;
             coordinates.textContent = `X: ${Math.round(point.x)}, Y: ${Math.round(point.y)}`;
 
             if (currentTool === 'brush') {
@@ -368,8 +371,6 @@
             if (!isDrawing) return;
             isDrawing = false;
 
-            const point = getCanvasPoint(e);
-
             if (currentTool === 'brush' && currentPath.length > 1) {
                 sendDrawEvent({
                     type: 'brush',
@@ -382,12 +383,12 @@
                     color: colorPicker.value,
                     x: startPoint.x,
                     y: startPoint.y,
-                    width: point.x - startPoint.x,
-                    height: point.y - startPoint.y,
+                    width: endPoint.x - startPoint.x,
+                    height: endPoint.y - startPoint.y,
                     startX: startPoint.x,
                     startY: startPoint.y,
-                    endX: point.x,
-                    endY: point.y
+                    endX: endPoint.x,
+                    endY: endPoint.y
                 };
                 sendDrawEvent(event);
                 processDrawEvent((() => {
