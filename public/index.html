@@ -86,6 +86,7 @@
         <button id="ovalTool">⭕ Oval</button>
         <button id="lineTool">📏 Line</button>
         <button id="textTool">📝 Text</button>
+        <button id="eraseTool">🧽 Erase</button>
         <button id="moveTool">✋ Move</button>
         <span id="mic-control"><button id="startChat">🎤 Enable Microphone</button><button id="mute">🎤 Mute
                 Microphone</button></span>
@@ -109,6 +110,7 @@
         const ovalTool = document.getElementById('ovalTool');
         const lineTool = document.getElementById('lineTool');
         const textTool = document.getElementById('textTool');
+        const eraseTool = document.getElementById('eraseTool')
         const moveTool = document.getElementById('moveTool');
         const coordinates = document.getElementById('coordinates');
 
@@ -126,7 +128,7 @@
 
         // Tool selection
         function setActiveTool(tool) {
-            const tools = [brushTool, rectangleTool, ovalTool, lineTool, textTool, moveTool];
+            const tools = [brushTool, rectangleTool, ovalTool, lineTool, textTool, eraseTool, moveTool];
             tools.forEach(t => t.classList.remove('active-tool'));
             currentTool = tool;
             drawMode = tool !== 'move';
@@ -159,6 +161,11 @@
             setActiveTool('text');
             textTool.classList.add('active-tool');
         };
+
+        eraseTool.onclick = () => {
+            setActiveTool('erase');
+            eraseTool.classList.add('active-tool')
+        }
 
         moveTool.onclick = () => {
             setActiveTool('move');
@@ -251,6 +258,15 @@
                     ctx.font = '16px Arial';
                     ctx.fillText(event.text, event.x, event.y);
                     break;
+
+                case 'erase':
+                    ctx.clearRect(
+                        event.x,
+                        event.y,
+                        event.width,
+                        event.height
+                    );
+                    break;
             }
         }
 
@@ -290,6 +306,16 @@
                     previewCtx.moveTo(event.startX, event.startY);
                     previewCtx.lineTo(event.endX, event.endY);
                     previewCtx.stroke();
+                    break;
+
+                case 'erase':
+                    previewCtx.fillStyle = "white";
+                    previewCtx.fillRect(
+                        event.x,
+                        event.y,
+                        event.width,
+                        event.height
+                    );
                     break;
             }
         }
@@ -382,7 +408,7 @@
                     color: colorPicker.value,
                     points: currentPath
                 });
-            } else if (startPoint && ['rectangle', 'oval', 'line'].includes(currentTool)) {
+            } else if (startPoint && ['rectangle', 'oval', 'line', 'erase'].includes(currentTool)) {
                 const event = {
                     type: currentTool,
                     color: colorPicker.value,
