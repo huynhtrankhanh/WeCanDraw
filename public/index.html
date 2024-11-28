@@ -528,6 +528,12 @@
                 api.executeCommand('toggleAudio')
             })
         })
+        startChatBtn.disabled = true
+        muteBtn.disabled = true
+        api.addListener('videoConferenceJoined', () => {
+            startChatBtn.removeAttribute('disabled')
+            muteBtn.removeAttribute('disabled')
+        })
         })();
     </script>
 </body>
