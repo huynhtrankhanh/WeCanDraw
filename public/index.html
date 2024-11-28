@@ -509,7 +509,7 @@
         const api = new JitsiMeetExternalAPI("calls.disroot.org", {
             roomName,
             parentNode: document.getElementById('jitsi'),
-            configOverwrite: { startWithAudioMuted: true, startWithVideoMuted: true, prejoinPageEnabled: false },
+            configOverwrite: { startWithAudioMuted: true, startWithVideoMuted: true, prejoinPageEnabled: false, disableDeepLinking: true },
             userInfo: { displayName, email: displayName + "@gmail.com" }
         })
         const micControlSpan = document.getElementById("mic-control");
