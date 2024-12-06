@@ -20,7 +20,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 // Initialize SQLite database
-const db = new sqlite3.Database('events.db', (err) => {
+const db = new sqlite3.Database('.data/events.db', (err) => {
     if (err) {
         console.error('Database initialization error:', err);
     }
